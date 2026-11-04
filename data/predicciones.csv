@@ -1,0 +1,4 @@
+fecha,prediccion_eolica_pct,real_eolica_pct,error_pct
+2026-11-02,4.93,2.37,2.56
+2026-11-03,2.37,2.58,0.21
+2026-11-04,4.23,,
