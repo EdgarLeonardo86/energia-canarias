@@ -1,9 +1,9 @@
 {
-  "fecha": "2026-11-07",
-  "prediccion_eolica_pct": 11.1,
-  "real_ayer_pct": 2.88,
-  "error_ayer_pp": 1.05,
-  "renovable_ayer_pct": 6.84,
+  "fecha": "2026-11-08",
+  "prediccion_eolica_pct": 23.99,
+  "real_ayer_pct": null,
+  "error_ayer_pp": null,
+  "renovable_ayer_pct": null,
   "mae_30d": 1.71,
   "n_dias_mae": 5
 }
