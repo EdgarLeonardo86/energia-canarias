@@ -12,6 +12,10 @@ class REEZeroDataError(Exception):
     """Error cuando la API responde pero los datos son 0"""
     pass
 
+class REEIncompleteDataError(Exception):
+    """Error cuando la API responde pero el total del día es inferior al 70% de la mediana de los 30 días anteriores"""
+    pass
+
 def fetch_data(start_date, end_date, retries=0, retry_delay_seconds=1800):
     """
     Consulta la API de REE con reintentos opcionales.
@@ -71,7 +75,73 @@ def fetch_data(start_date, end_date, retries=0, retry_delay_seconds=1800):
     raise REEApiError("API no disponible")
 
 
-def parse_day_stats(included, target_date_str):
+def is_day_incomplete(csv_path, target_date_str, target_total, threshold=0.7, lookback_days=30):
+    """
+    Verifica si un día tiene datos incompletos comparando el total
+    con el 70% de la mediana de los 30 días anteriores en el histórico.
+    Devuelve True si el día es incompleto (no debe guardarse).
+    """
+    import csv
+    import os
+
+    if not os.path.exists(csv_path):
+        return False  # Sin histórico, no podemos validar
+
+    try:
+        target_date = datetime.datetime.strptime(target_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return False
+
+    # Leer histórico y calcular total diario
+    daily_totals = {}
+    try:
+        with open(csv_path, mode='r', encoding='utf-8', newline='') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                fecha = row.get('fecha')
+                total = row.get('total_mwh')
+                if fecha and total:
+                    try:
+                        daily_totals[fecha] = float(total)
+                    except ValueError:
+                        pass
+    except Exception:
+        return False
+
+    # Obtener totales de los 30 días anteriores
+    target_date_obj = datetime.datetime.strptime(target_date_str, '%Y-%m-%d').date()
+    prev_30_start = target_date_obj - datetime.timedelta(days=30)
+    prev_30_end = target_date_obj - datetime.timedelta(days=1)
+
+    prev_totals = []
+    for fecha_str, total in daily_totals.items():
+        try:
+            fecha = datetime.datetime.strptime(fecha_str, '%Y-%m-%d').date()
+            if prev_30_start <= fecha <= prev_30_end:
+                prev_totals.append(total)
+        except ValueError:
+            pass
+
+    if len(prev_totals) < 10:  # Mínimo 10 días para calcular mediana fiable
+        return False
+
+    # Calcular mediana
+    prev_totals_sorted = sorted(prev_totals)
+    n = len(prev_totals_sorted)
+    if n % 2 == 0:
+        mediana = (prev_totals_sorted[n//2 - 1] + prev_totals_sorted[n//2]) / 2
+    else:
+        mediana = prev_totals_sorted[n//2]
+
+    # Verificar umbral usando el total pasado como parámetro
+    threshold_value = 0.7 * mediana
+    if target_total < threshold_value:
+        return True  # Día incompleto
+
+    return False
+
+
+def parse_day_stats(included, target_date_str, csv_path=None):
     tech_data = []
     total_from_api = None
     sum_mwh = 0.0
@@ -107,6 +177,14 @@ def parse_day_stats(included, target_date_str):
     if total_gen == 0:
         raise REEZeroDataError(f"ERROR: La generación total para la fecha {target_date_str} es 0 MWh.")
 
+    # Validar día incompleto si se proporciona csv_path
+    if csv_path and is_day_incomplete(csv_path, target_date_str, total_gen):
+        raise REEIncompleteDataError(
+            f"DATOS INCOMPLETOS: La generación total para {target_date_str} ({total_gen:.2f} MWh) "
+            f"está por debajo del 70% de la mediana de los 30 días anteriores. "
+            f"Dato no guardado, se reintentará en siguientes ejecuciones."
+        )
+
     return {
         'total_gen': total_gen,
         'renewable_mwh': renewable_mwh,
@@ -130,7 +208,7 @@ def fill_missing_days(csv_path, days_back=7):
 
     existing_dates = set()
     if os.path.exists(csv_path):
-        with open(csv_path, mode='r', encoding='utf-8') as f:
+        with open(csv_path, mode='r', encoding='utf-8', newline='') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 existing_dates.add(row.get('fecha'))
@@ -157,7 +235,7 @@ def fill_missing_days(csv_path, days_back=7):
 
     all_rows = []
     if os.path.exists(csv_path):
-        with open(csv_path, mode='r', encoding='utf-8') as f:
+        with open(csv_path, mode='r', encoding='utf-8', newline='') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 all_rows.append(row)
@@ -181,7 +259,7 @@ def fill_missing_days(csv_path, days_back=7):
 
             for d_str in dates:
                 try:
-                    stats = parse_day_stats(included, d_str)
+                    stats = parse_day_stats(included, d_str, csv_path)
                     all_rows = [r for r in all_rows if r.get('fecha') != d_str]
                     for tech in stats['tech_data']:
                         pct = (tech['val'] / stats['total_gen'] * 100) if stats['total_gen'] > 0 else 0.0
@@ -196,6 +274,9 @@ def fill_missing_days(csv_path, days_back=7):
                     successfully_recovered.append(d_str)  # YYYY-MM-DD
                 except REEZeroDataError:
                     pass
+                except REEIncompleteDataError as e:
+                    print(f"Advertencia: {e}", file=sys.stderr)
+                    pass
         except REEApiError:
             pass
 
@@ -203,7 +284,7 @@ def fill_missing_days(csv_path, days_back=7):
         os.makedirs(os.path.dirname(csv_path), exist_ok=True)
         all_rows.sort(key=lambda x: (x.get('fecha', ''), x.get('tecnologia', '')))
         with open(csv_path, mode='w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer = csv.DictWriter(f, fieldnames=fieldnames, lineterminator='\n')
             writer.writeheader()
             writer.writerows(all_rows)
 

@@ -64,7 +64,7 @@ def save_to_csv(csv_path, new_rows):
     
     existing = []
     if os.path.exists(csv_path):
-        with open(csv_path, 'r', encoding='utf-8') as f:
+        with open(csv_path, 'r', encoding='utf-8', newline='') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 existing.append(row)
@@ -77,9 +77,11 @@ def save_to_csv(csv_path, new_rows):
             existing.append(row)
             existing_keys.add(key)
     
+    existing.sort(key=lambda x: (x.get('fecha', ''), x.get('punto', '')))
+    
     os.makedirs(os.path.dirname(csv_path), exist_ok=True)
     with open(csv_path, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=fieldnames, lineterminator='\n')
         writer.writeheader()
         writer.writerows(existing)
     
