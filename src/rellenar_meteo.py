@@ -4,12 +4,11 @@ import sys
 import time
 from meteo_utils import PUNTOS, fetch_open_meteo_archive, parse_meteo_response, save_to_csv
 
-CSV_PATH = '/home/agentes/proyectos/ree/meteo.csv'
+CSV_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'meteo.csv')
 
 def main():
-    # Hoy es 2026-11-02, ayer 2026-11-01
     start_date = datetime.date(2026, 1, 1)
-    end_date = datetime.date(2026, 11, 1)  # Ayer
+    end_date = datetime.date.today() - datetime.timedelta(days=1)  # Ayer
     
     print(f"Descargando datos meteorológicos desde {start_date} hasta {end_date}...")
     

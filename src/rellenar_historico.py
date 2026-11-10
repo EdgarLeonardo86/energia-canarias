@@ -7,7 +7,7 @@ import time
 
 from ree_utils import fetch_data, parse_day_stats
 
-CSV_PATH = os.path.expanduser('~/proyectos/ree/historico.csv')
+CSV_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'historico.csv')
 
 def get_months_ranges(start_date, end_date):
     ranges = []
@@ -46,7 +46,7 @@ def main():
     
     existing_rows = []
     if os.path.exists(CSV_PATH):
-        with open(CSV_PATH, mode='r', encoding='utf-8') as f:
+        with open(CSV_PATH, mode='r', encoding='utf-8', newline='') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 if row.get('fecha', '') < today_str:
@@ -61,7 +61,7 @@ def main():
         except Exception as e:
             print(f"Error al consultar API para {m_start} - {m_end}: {e}", file=sys.stderr)
             continue
-
+        
         included = data.get('included', [])
         
         dates_set = set()
@@ -71,22 +71,22 @@ def main():
                 dt_str = v.get('datetime', '')[:10]
                 if dt_str and dt_str < today_str:
                     dates_set.add(dt_str)
-
+        
         sorted_dates = sorted(list(dates_set))
-
+        
         for d_str in sorted_dates:
             try:
-                stats = parse_day_stats(included, d_str)
-            except ValueError as e:
+                stats = parse_day_stats(included, d_str, CSV_PATH)
+            except Exception as e:
                 print(f"  Saltando {d_str}: {e}", file=sys.stderr)
                 continue
-
+            
             tech_data = stats['tech_data']
             total_gen = stats['total_gen']
             ren_pct = stats['ren_pct']
-
+            
             existing_rows = [r for r in existing_rows if r.get('fecha') != d_str]
-
+            
             for tech in tech_data:
                 pct = (tech['val'] / total_gen * 100) if total_gen > 0 else 0.0
                 existing_rows.append({
@@ -98,17 +98,17 @@ def main():
                     'porcentaje_renovable': f"{ren_pct:.2f}"
                 })
             saved_dates.add(d_str)
-
+        
         if i < len(month_ranges) - 1:
             time.sleep(2)
-
+    
     existing_rows.sort(key=lambda x: (x.get('fecha', ''), x.get('tecnologia', '')))
-
+    
     with open(CSV_PATH, mode='w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=fieldnames, lineterminator='\n')
         writer.writeheader()
         writer.writerows(existing_rows)
-
+    
     print(f"\nProceso completado. Se han guardado/actualizado datos de {len(saved_dates)} días en {CSV_PATH}.")
 
 if __name__ == '__main__':

@@ -77,7 +77,8 @@ def save_prediction(date_str, pred_pct):
             'real_eolica_pct': '',
             'error_pct': ''
         })
-        pd.DataFrame(rows, columns=fieldnames).to_csv(CSV_PRED, index=False)
+        df = pd.DataFrame(rows, columns=fieldnames)
+        df.to_csv(CSV_PRED, index=False, lineterminator='\n')
 
 def update_pending_predictions():
     """Revisa todas las predicciones pasadas sin valor real y los completa si ya están en historico.csv"""
@@ -110,7 +111,7 @@ def update_pending_predictions():
             updated = True
 
     if updated:
-        df_pred.to_csv(CSV_PRED, index=False)
+        df_pred.to_csv(CSV_PRED, index=False, lineterminator='\n')
 
 def get_today_prediction_from_csv():
     """Lee la predicción de hoy desde data/predicciones.csv"""
