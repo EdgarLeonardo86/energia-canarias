@@ -166,7 +166,11 @@ def main():
     plt.savefig(chart2_path, dpi=300)
     plt.close()
 
-    # Imprimir resumen de prueba (sin MEDIA:)
+    # MEDIA tags for the charts
+    print(f"MEDIA:{chart1_path}")
+    print(f"MEDIA:{chart2_path}")
+
+    # Imprimir resumen
     missing_str = f"; faltan {', '.join(missing_days)}" if missing_days else ""
     print(f"Semana analizada: {last_monday.strftime('%d/%m/%Y')} al {last_sunday.strftime('%d/%m/%Y')}")
     print(f"Datos disponibles: {available_days} de {expected_days} días{missing_str}.")
