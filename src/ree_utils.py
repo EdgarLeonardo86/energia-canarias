@@ -141,6 +141,12 @@ def is_day_incomplete(csv_path, target_date_str, target_total, threshold=0.7, lo
     return False
 
 
+# Diccionario de equivalencias para normalizar nombres de tecnologías si REE los renombra
+TECNOLOGIA_MAP = {
+    "Motor combustión interna": "Motores diésel",
+}
+
+
 def parse_day_stats(included, target_date_str, csv_path=None):
     tech_data = []
     total_from_api = None
@@ -151,6 +157,8 @@ def parse_day_stats(included, target_date_str, csv_path=None):
         attrs = item.get('attributes', {})
         title = attrs.get('title', '')
         gen_type = attrs.get('type', '')
+        # Normalizar nombre de tecnología si REE lo ha renombrado
+        title = TECNOLOGIA_MAP.get(title, title)
         values = attrs.get('values', [])
 
         val = 0.0

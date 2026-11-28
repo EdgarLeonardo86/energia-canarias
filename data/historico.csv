@@ -2642,7 +2642,7 @@ fecha,tecnologia,mwh,porcentaje,total_mwh,porcentaje_renovable
 2026-11-25,Turbina de vapor,2766.45,10.51,26327.58,38.09
 2026-11-26,Ciclo combinado,8755.43,33.67,26000.74,31.78
 2026-11-26,Eólica,7500.62,28.85,26000.74,31.78
-2026-11-26,Motor combustión interna,5440.83,20.93,26000.74,31.78
+2026-11-26,Motores diésel,5440.83,20.93,26000.74,31.78
 2026-11-26,Solar fotovoltaica,762.29,2.93,26000.74,31.78
 2026-11-26,Turbina de gas,414.25,1.59,26000.74,31.78
 2026-11-26,Turbina de vapor,3127.32,12.03,26000.74,31.78
